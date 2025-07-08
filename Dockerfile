@@ -4,6 +4,10 @@ WORKDIR /app
 
 COPY . .
 
+# Adiciona permissão de execução no Linux (Render)
+RUN chmod +x ./mvnw
+
+# Compila o projeto
 RUN ./mvnw clean package -DskipTests
 
 EXPOSE 8080
