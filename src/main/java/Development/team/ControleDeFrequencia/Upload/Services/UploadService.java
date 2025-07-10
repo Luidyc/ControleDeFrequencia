@@ -3,10 +3,12 @@ package Development.team.ControleDeFrequencia.Upload.Services;
 import Development.team.ControleDeFrequencia.RegistroDiaTrabalhado.Entity.RegistroDiaTrabalhado;
 import Development.team.ControleDeFrequencia.RegistroPonto.Entity.RegistroPonto;
 import Development.team.ControleDeFrequencia.Upload.Entity.UploadEntity;
+import Development.team.ControleDeFrequencia.Upload.Entity.UploadResponse;
 import Development.team.ControleDeFrequencia.Upload.Repository.UploadRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UploadService {
@@ -101,9 +104,20 @@ public class UploadService {
     }
 
 
+    public ResponseEntity<List<UploadResponse>> getLastTen() {
+        LocalDateTime dezDiasAtras = LocalDateTime.now().minusDays(10);
+        List<UploadEntity> uploads = uploadRepository.findUploadsFromLastDays(dezDiasAtras);
 
-
-
-
+        List<UploadResponse> response = uploads.stream()
+                .map(upload-> new UploadResponse(
+                        upload.getId(),
+                        upload.getUploadDate(),
+                        upload.getResponsible(),
+                        upload.getArchiveName(),
+                        upload.getRegistry() != null ? upload.getRegistry().size() : 0
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
 
 }
