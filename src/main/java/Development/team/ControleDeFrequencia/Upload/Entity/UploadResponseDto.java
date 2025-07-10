@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UploadResponse {
+public class UploadResponseDto {
     private Long id;
     private LocalDateTime uploadDate;
     private String responsible;

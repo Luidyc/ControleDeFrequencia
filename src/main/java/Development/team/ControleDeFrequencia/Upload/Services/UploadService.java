@@ -3,7 +3,7 @@ package Development.team.ControleDeFrequencia.Upload.Services;
 import Development.team.ControleDeFrequencia.RegistroDiaTrabalhado.Entity.RegistroDiaTrabalhado;
 import Development.team.ControleDeFrequencia.RegistroPonto.Entity.RegistroPonto;
 import Development.team.ControleDeFrequencia.Upload.Entity.UploadEntity;
-import Development.team.ControleDeFrequencia.Upload.Entity.UploadResponse;
+import Development.team.ControleDeFrequencia.Upload.Entity.UploadResponseDto;
 import Development.team.ControleDeFrequencia.Upload.Repository.UploadRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -49,32 +49,27 @@ public class UploadService {
         }
     }
 
-    public UploadEntity registry(String username, MultipartFile file) {
+    public UploadEntity registry(String username, UploadEntity request) {
         // 1. Começo buscando registrar quem trabalhou.
 
         Map<String, RegistroDiaTrabalhado> UniqueRegistry = new HashMap<>();
         // Capturando o input da request e passando para a depedência que ler xls.
-        try(InputStream is = file.getInputStream();
-            Workbook workbook = new XSSFWorkbook(is)) {
-            Sheet sheet = workbook.getSheetAt(0);
+        for (RegistroPonto registro : request.getRegistry()) {
+            String cpf = registro.getCpf();
+            String name = registro.getName();
+            String dataStr = registro.getDate().toString();
 
-            for(Row row : sheet) {
-                if(row.getRowNum() == 0) continue; // Pular cabeçalho
+            //Criando cheve única do Cpf+Dia Trabalhado
+            String chave = cpf + "_" + dataStr;
 
-                String cpf = getCellValueAsString(row.getCell(0));
-                String name = getCellValueAsString(row.getCell(1));
-                String dateStr = getCellValueAsString(row.getCell(2));
-                //Possível utilizar o horário.
-                LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
-
-                //Criando cheve única do Cpf+Dia Trabalhado
-                String chave = cpf+"_"+dateStr;
-
-                //Só adiciona se não estiver no map.
-                if(!UniqueRegistry.containsKey(chave)) {
-                    UniqueRegistry.put(chave,new RegistroDiaTrabalhado(cpf,name,date));
-                }
+            //Só adiciona se não estiver no map.
+            if (!UniqueRegistry.containsKey(chave)) {
+                UniqueRegistry.put(chave, new RegistroDiaTrabalhado(cpf, name, registro.getDate()));
             }
+        }
+
+
+
 
         //Convertendo para o Banco de dados.
         List<RegistroPonto> pontos = UniqueRegistry.values().stream()
@@ -91,25 +86,23 @@ public class UploadService {
         UploadEntity upload = new UploadEntity();
         upload.setUploadDate(LocalDateTime.now());
         upload.setResponsible(username);
-        upload.setArchiveName(file.getOriginalFilename());
+        upload.setArchiveName(request.getArchiveName());
         upload.setRegistry(pontos);
         pontos.forEach(p-> p.setUpload(upload));
 
         return uploadRepository.save(upload);
 
-        } catch (IOException e) {
-            return null;
-        }
+
 
     }
 
 
-    public ResponseEntity<List<UploadResponse>> getLastTen() {
+    public ResponseEntity<List<UploadResponseDto>> getLastTen() {
         LocalDateTime dezDiasAtras = LocalDateTime.now().minusDays(10);
         List<UploadEntity> uploads = uploadRepository.findUploadsFromLastDays(dezDiasAtras);
 
-        List<UploadResponse> response = uploads.stream()
-                .map(upload-> new UploadResponse(
+        List<UploadResponseDto> response = uploads.stream()
+                .map(upload-> new UploadResponseDto(
                         upload.getId(),
                         upload.getUploadDate(),
                         upload.getResponsible(),
